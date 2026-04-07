@@ -1,0 +1,26 @@
+python -m venv venv
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+pip install fastapi uvicorn sqlalchemy psycopg2-binary python-jose passlib[bcrypt] pydantic email-validator
+
+loading ucicorn 
+uvicorn app.main:app --reload
+
+unvicorn debugs
+run in the root folder.
+finding the port using uvicorn
+
+netstat -ano | findstr :8000
+taskkill /PID p_id /F
+
+vscode
+set the python interpreter
+ctrl + shift+ P
+
+
+Database.py
+
+PostgreSQL 
+pass : mayo_project@123
+port : 5432
+locale
