@@ -1,13 +1,7 @@
-import os
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg2://postgres:mayo_project%40123@localhost:5432/mayo_app"
-)
+from app.config import DATABASE_URL
 
 
 engine = create_engine(
@@ -30,11 +24,8 @@ Base = declarative_base()
 
 
 def get_db():
-
     db = SessionLocal()
-
     try:
         yield db
-
     finally:
         db.close()

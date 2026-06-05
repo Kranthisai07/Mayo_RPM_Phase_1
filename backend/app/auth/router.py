@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
-from app.auth.service import register_user, login_user
-from app.schema.schema import PatientCreate, LoginRequest, TokenResponse
-
+from app.auth.service import login_user, register_patient
+from app.schemas.patient import PatientResponse
+from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.user import UserCreate
 
 router = APIRouter(
     prefix="/auth",
@@ -12,23 +13,13 @@ router = APIRouter(
 )
 
 
-@router.post("/register")
+
+@router.post("/register", response_model=PatientResponse)
 def register(
-    data: PatientCreate,
+    data: UserCreate,
     db: Session = Depends(get_db)
 ):
-    user = register_user(
-        db=db,
-        name=data.name,
-        age=data.age,
-        email=data.email,
-        password=data.password
-    )
-
-    return {
-        "message": "Account created successfully",
-        "patient_id": user.id
-    }
+    return register_patient(db=db, user_data=data)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -36,13 +27,8 @@ def login(
     data: LoginRequest,
     db: Session = Depends(get_db)
 ):
-    token = login_user(
+    return login_user(
         db=db,
         email=data.email,
         password=data.password
     )
-
-    return {
-        "access_token": token,
-        "token_type": "bearer"
-    }

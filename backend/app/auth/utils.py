@@ -1,4 +1,3 @@
-import os
 import hashlib
 from datetime import datetime, timedelta, timezone
 
@@ -6,10 +5,7 @@ from jose import jwt, JWTError
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
 
-
-SECRET_KEY = os.getenv("SECRET_KEY", "change-this-in-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+from app.config import ACCESS_TOKEN_EXPIRE_MINUTES, JWT_ALGORITHM, JWT_SECRET_KEY
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],
@@ -17,11 +13,8 @@ pwd_context = CryptContext(
 )
 
 
+
 def _prehash_password(password: str) -> str:
-    """
-    Pre-hash the raw password with SHA-256 so bcrypt always receives
-    a fixed-length input. This avoids bcrypt's 72-byte limit.
-    """
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 
@@ -44,7 +37,11 @@ def verify_password(password: str, hashed_password: str) -> bool:
         return False
 
 
+
 def create_access_token(data: dict) -> str:
+    if "user_id" not in data or "role" not in data:
+        raise ValueError("Token must include user_id and role")
+
     to_encode = data.copy()
 
     now = datetime.now(timezone.utc)
@@ -53,16 +50,31 @@ def create_access_token(data: dict) -> str:
     to_encode.update({
         "exp": expire,
         "iat": now,
-        "type": "access"
+        "type": "access",
+        "iss": "rpm-api"
     })
 
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+
+        if payload.get("type") != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type"
+            )
+
+        if "user_id" not in payload or "role" not in payload:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload"
+            )
+
         return payload
+
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

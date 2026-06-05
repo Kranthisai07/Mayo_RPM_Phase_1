@@ -1,66 +1,36 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import require_role
 from app.database.database import get_db
-from app.models.models import Patient
-from app.auth.dependencies import get_current_user
+from app.schemas.alert import AlertResponse
+from app.schemas.user import UserResponse
+from app.schemas.vitals import VitalsResponse
+from app.services.alert_service import get_user_alerts
+from app.services.user_service import get_patient_history, get_user_profile
 
-router = APIRouter(
-    prefix="/patient",
-    tags=["Patient"]
-)
+router = APIRouter(prefix="/patient", tags=["Patient"])
 
 
-# -------------------------
-# Get current logged-in patient profile
-# -------------------------
-@router.get("/me")
+@router.get("/me", response_model=UserResponse)
 def get_my_profile(
     db: Session = Depends(get_db),
-    current_user: Patient = Depends(get_current_user)
+    current_user=Depends(require_role(["patient"])),
 ):
-    patient = db.query(Patient).filter(Patient.id == current_user.id).first()
-
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
-
-    return {
-        "id": patient.id,
-        "name": patient.name,
-        "age": patient.age,
-        "email": patient.email,
-        "created_at": patient.created_at,
-        "is_active": getattr(patient, "is_active", True),
-        "last_login": getattr(patient, "last_login", None),
-    }
+    return get_user_profile(db, current_user["user_id"])
 
 
-# -------------------------
-# Optional: Get patient by id
-# Keep disabled for patient app to avoid cross-patient exposure
-# -------------------------
-@router.get("/{patient_id}")
-def get_patient_by_id(
-    patient_id: int,
+@router.get("/history", response_model=list[VitalsResponse])
+def get_my_history(
     db: Session = Depends(get_db),
-    current_user: Patient = Depends(get_current_user)
+    current_user=Depends(require_role(["patient"])),
 ):
-    # Minimum-necessary approach:
-    # A patient should only be able to read their own record.
-    if current_user.id != patient_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    return get_patient_history(db, current_user["user_id"])
 
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
 
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
-
-    return {
-        "id": patient.id,
-        "name": patient.name,
-        "age": patient.age,
-        "email": patient.email,
-        "created_at": patient.created_at,
-        "is_active": getattr(patient, "is_active", True),
-        "last_login": getattr(patient, "last_login", None),
-    }
+@router.get("/alerts", response_model=list[AlertResponse])
+def get_my_alerts(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role(["patient"])),
+):
+    return get_user_alerts(db, current_user["user_id"])
