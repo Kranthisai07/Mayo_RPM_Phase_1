@@ -1,0 +1,12 @@
+# Normalize line endings for everyone: LF in the repo, checked out as
+# each platform's native convention. Prevents Windows/Mac diff noise and
+# keeps scripts with shebangs working after checkout.
+* text=auto
+
+# Never line-ending-normalize binaries.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.zip binary
+*.docx binary
+*.pyc binary
