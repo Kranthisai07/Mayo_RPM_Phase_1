@@ -1,15 +1,21 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const TOKEN_KEY = "auth_token";
+const SESSION_KEY = "auth_session";
 
-export const saveToken = async (token) => {
-  await AsyncStorage.setItem(TOKEN_KEY, token);
+export const saveSession = async (session) => {
+  await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
+};
+
+export const getSession = async () => {
+  const raw = await AsyncStorage.getItem(SESSION_KEY);
+  return raw ? JSON.parse(raw) : null;
 };
 
 export const getToken = async () => {
-  return await AsyncStorage.getItem(TOKEN_KEY);
+  const session = await getSession();
+  return session ? session.token : null;
 };
 
-export const removeToken = async () => {
-  await AsyncStorage.removeItem(TOKEN_KEY);
+export const clearSession = async () => {
+  await AsyncStorage.removeItem(SESSION_KEY);
 };

@@ -1,3 +1,7 @@
+from app.services.weight_analysis_service import (
+    get_latest_patient_weight_ai_status,
+)
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -31,3 +35,15 @@ def add_vitals(
         details="Patient submitted vitals",
     )
     return vitals
+@router.get("/weight-ai/{patient_id}")
+def get_weight_ai_status(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_role(["nurse", "admin"])
+    ),
+):
+    return get_latest_patient_weight_ai_status(
+        db,
+        patient_id,
+    )

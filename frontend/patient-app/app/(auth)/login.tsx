@@ -1,82 +1,117 @@
-import { View, Text, TextInput, Button, Alert, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useState } from "react";
 import { router } from "expo-router";
 import { loginUser } from "../../src/auth/authService";
+import { getHomeRouteForRole } from "../../src/auth/roleRoutes";
+import InputField from "../../src/components/InputField";
+import PrimaryButton from "../../src/components/PrimaryButton";
+import Card from "../../src/components/card";
+import { Colors } from "../../src/constants/colors";
+import { notify } from "../../src/utils/alert";
 
 export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
 
+    if (!email || !password) {
+      notify("Missing info", "Enter both email and password.");
+      return;
+    }
+
+    setLoading(true);
+
     try {
 
-      await loginUser(email, password);
+      const data = await loginUser(email, password);
 
-      router.replace("/(tabs)/vitals");
+      router.replace(getHomeRouteForRole(data.role) as any);
 
-    } catch {
+    } catch (err: any) {
 
-      Alert.alert("Login failed");
+      notify(
+        "Login failed",
+        err?.response?.data?.detail ?? "Check your email and password and try again."
+      );
 
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
 
-      <Text style={styles.label}>Email</Text>
+        <Text style={styles.title}>Remote Patient Monitoring</Text>
+        <Text style={styles.subtitle}>Sign in to continue</Text>
 
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-      />
+        <Card>
+          <InputField
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            placeholder="you@example.com"
+          />
 
-      <Text style={styles.label}>Password</Text>
+          <InputField
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholder="••••••••"
+          />
 
-      <TextInput
-        style={styles.input}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+          <PrimaryButton title="Log In" onPress={handleLogin} loading={loading} />
 
-      <Button title="Login" onPress={handleLogin} />
+          <View style={{ height: 12 }} />
 
-      <View style={{ height: 20 }} />
+          <PrimaryButton
+            title="Create a patient account"
+            variant="secondary"
+            onPress={() => router.push("/(auth)/register")}
+          />
+        </Card>
 
-      <Button
-        title="Register"
-        onPress={() => router.push("/(auth)/register")}
-      />
-
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
 
-  container: {
+  flex: {
     flex: 1,
+    backgroundColor: Colors.background,
+  },
+
+  container: {
+    flexGrow: 1,
     justifyContent: "center",
-    padding: 25
+    padding: 25,
   },
 
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 5
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: Colors.text,
+    textAlign: "center",
+    marginBottom: 4,
   },
 
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    padding: 10,
-    marginBottom: 15
-  }
+  subtitle: {
+    fontSize: 15,
+    color: Colors.muted,
+    textAlign: "center",
+    marginBottom: 24,
+  },
 
 });

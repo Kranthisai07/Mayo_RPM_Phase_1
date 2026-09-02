@@ -1,26 +1,27 @@
 import { useEffect, useState } from "react";
 import { Redirect } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
-import { getToken } from "../src/auth/tokenStorage";
+import { getSession } from "../src/auth/tokenStorage";
+import { getHomeRouteForRole } from "../src/auth/roleRoutes";
 
 export default function Index() {
 
-  const [token, setToken] = useState<string | null>(null);
+  const [session, setSession] = useState<{ role: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
 
-    const checkToken = async () => {
+    const checkSession = async () => {
 
       try {
 
-        const storedToken = await getToken();
+        const storedSession = await getSession();
 
-        setToken(storedToken);
+        setSession(storedSession);
 
       } catch (err) {
 
-        console.log("Token error", err);
+        console.log("Session error", err);
 
       } finally {
 
@@ -30,7 +31,7 @@ export default function Index() {
 
     };
 
-    checkToken();
+    checkSession();
 
   }, []);
 
@@ -49,8 +50,8 @@ export default function Index() {
     );
   }
 
-  if (token) {
-    return <Redirect href="/(tabs)/vitals" />;
+  if (session) {
+    return <Redirect href={getHomeRouteForRole(session.role) as any} />;
   }
 
   return <Redirect href="/(auth)/login" />;

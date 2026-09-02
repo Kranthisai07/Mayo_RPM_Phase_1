@@ -1,7 +1,12 @@
-import { View, Text, TextInput, Button, Alert, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useState } from "react";
 import { router } from "expo-router";
 import { registerUser } from "../../src/auth/authService";
+import InputField from "../../src/components/InputField";
+import PrimaryButton from "../../src/components/PrimaryButton";
+import Card from "../../src/components/card";
+import { Colors } from "../../src/constants/colors";
+import { notify } from "../../src/utils/alert";
 
 export default function Register() {
 
@@ -9,80 +14,117 @@ export default function Register() {
   const [age, setAge] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
 
+    if (!name || !email || !password) {
+      notify("Missing info", "Name, email, and password are required.");
+      return;
+    }
+
+    setLoading(true);
+
     try {
 
-      await registerUser(name, parseInt(age), email, password);
+      await registerUser(name, age ? parseInt(age, 10) : null, email, password);
 
-      Alert.alert("Registration successful");
+      notify("Registration successful", "You can now log in.");
 
       router.replace("/(auth)/login");
 
-    } catch {
+    } catch (err: any) {
 
-      Alert.alert("Registration failed");
+      notify(
+        "Registration failed",
+        err?.response?.data?.detail ?? "Please check your details and try again."
+      );
 
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
 
-      <Text style={styles.label}>Name</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} />
+        <Text style={styles.title}>Create Account</Text>
+        <Text style={styles.subtitle}>Register as a patient</Text>
 
-      <Text style={styles.label}>Age</Text>
-      <TextInput
-        style={styles.input}
-        keyboardType="numeric"
-        value={age}
-        onChangeText={setAge}
-      />
+        <Card>
+          <InputField label="Name" value={name} onChangeText={setName} placeholder="Jane Doe" />
 
-      <Text style={styles.label}>Email</Text>
-      <TextInput
-        style={styles.input}
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
+          <InputField
+            label="Age"
+            value={age}
+            onChangeText={setAge}
+            keyboardType="numeric"
+            placeholder="Optional"
+          />
 
-      <Text style={styles.label}>Password</Text>
-      <TextInput
-        style={styles.input}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+          <InputField
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            placeholder="you@example.com"
+          />
 
-      <Button title="Register" onPress={handleRegister} />
+          <InputField
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholder="At least 8 characters"
+          />
 
-    </View>
+          <PrimaryButton title="Register" onPress={handleRegister} loading={loading} />
+
+          <View style={{ height: 12 }} />
+
+          <PrimaryButton
+            title="Back to login"
+            variant="secondary"
+            onPress={() => router.replace("/(auth)/login")}
+          />
+        </Card>
+
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
 
-  container: {
+  flex: {
     flex: 1,
+    backgroundColor: Colors.background,
+  },
+
+  container: {
+    flexGrow: 1,
     justifyContent: "center",
-    padding: 25
+    padding: 25,
   },
 
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 5
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: Colors.text,
+    textAlign: "center",
+    marginBottom: 4,
   },
 
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    padding: 10,
-    marginBottom: 15
-  }
+  subtitle: {
+    fontSize: 15,
+    color: Colors.muted,
+    textAlign: "center",
+    marginBottom: 24,
+  },
 
 });

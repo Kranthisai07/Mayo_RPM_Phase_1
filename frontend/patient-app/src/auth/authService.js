@@ -1,11 +1,11 @@
 import API from "../api/apiClient";
-import { saveToken, removeToken } from "./tokenStorage";
+import { saveSession, clearSession } from "./tokenStorage";
 
 export const registerUser = async (name, age, email, password) => {
 
   const response = await API.post("/auth/register", {
     name,
-    age:Number(age),
+    age: Number(age),
     email,
     password
   });
@@ -20,13 +20,19 @@ export const loginUser = async (email, password) => {
     password
   });
 
-  const token = response.data.access_token;
+  const { access_token, role, user_id, name, email: userEmail } = response.data;
 
-  await saveToken(token);
+  await saveSession({
+    token: access_token,
+    role,
+    userId: user_id,
+    name,
+    email: userEmail,
+  });
 
   return response.data;
 };
 
 export const logoutUser = async () => {
-  await removeToken();
+  await clearSession();
 };

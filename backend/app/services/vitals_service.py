@@ -31,13 +31,22 @@ def add_vitals_service(db: Session, user_id: int, weight_value: float, spo2_valu
     if previous_vitals:
         weight_difference = weight_value - previous_vitals.weight_value
 
-        if abs(weight_difference) > 2:
+        if weight_difference > 1.5:
             db.add(Alert(
                 patient_id=user_id,
                 vital_id=new_vitals.id,
                 alert_type="weight",
                 severity="high",
-                message="Clinically significant weight change detected",
+                message=f"Weight increased by {weight_difference:.1f} kg",
+                status="active"
+            ))
+        elif weight_difference < -2:
+            db.add(Alert(
+                patient_id=user_id,
+                vital_id=new_vitals.id,
+                alert_type="weight",
+                severity="high",
+                message=f"Weight decreased by {abs(weight_difference):.1f} kg",
                 status="active"
             ))
 
