@@ -3,6 +3,28 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Patient / research data — never commit, regardless of Real vs Synthetic
+# classification. See PROJECT_AUDIT.md for the open provenance question.
+backend/data/
+*.csv
+
+# Claude Code local session config (machine-specific, not shared)
+.claude/
+
+# Node (frontend also has its own nested .gitignore; kept here too for
+# anyone running commands from the repo root)
+node_modules/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
 # C extensions
 *.so
 
