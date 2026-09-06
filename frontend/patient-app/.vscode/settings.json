@@ -3,5 +3,7 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "emulator.emulatorPath": "C:\\Users\\HP\\AppData\\Local\\Android\\Sdk\\emulator\\emulator.exe",
+  "emulator.androidHome": "C:\\Users\\HP\\AppData\\Local\\Android\\Sdk"
 }

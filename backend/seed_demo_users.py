@@ -1,4 +1,4 @@
-from app.database.database import SessionLocal
+from app.database.database import Base, SessionLocal, engine
 from app.models import User
 from app.auth.utils import hash_password
 
@@ -26,6 +26,7 @@ DEMO_USERS = [
 
 
 def seed_demo_users():
+    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
     try:

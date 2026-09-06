@@ -7,11 +7,7 @@ from fastapi import HTTPException, status
 
 from app.config import ACCESS_TOKEN_EXPIRE_MINUTES, JWT_ALGORITHM, JWT_SECRET_KEY
 
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto"
-)
-
+import bcrypt
 
 
 def _prehash_password(password: str) -> str:
@@ -26,13 +22,14 @@ def hash_password(password: str) -> str:
         )
 
     prehashed = _prehash_password(password)
-    return pwd_context.hash(prehashed)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(prehashed.encode("utf-8"), salt).decode("utf-8")
 
 
 def verify_password(password: str, hashed_password: str) -> bool:
     try:
         prehashed = _prehash_password(password)
-        return pwd_context.verify(prehashed, hashed_password)
+        return bcrypt.checkpw(prehashed.encode("utf-8"), hashed_password.encode("utf-8"))
     except Exception:
         return False
 

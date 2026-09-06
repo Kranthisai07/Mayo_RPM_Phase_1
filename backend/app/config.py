@@ -3,7 +3,7 @@ import os
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg2://postgres:mayo_project%40123@localhost:5432/mayo_app",
+    "sqlite:///./mayo_app.db",
 )
 
 JWT_SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret-key")
