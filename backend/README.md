@@ -25,18 +25,20 @@ requirements.txt: Python dependencies
 
 Requirements
 
-Python 3.11+ recommended
-PostgreSQL running locally if using the default database configuration
+Python 3.11+
+No database server needed for local dev — defaults to a local SQLite file (mayo_app.db, gitignored). PostgreSQL is optional, via DATABASE_URL.
+pandas / numpy / scikit-learn (for the AI weight-anomaly service) install via the same requirements.txt on both Windows and macOS — all three publish prebuilt wheels for Windows, Intel macOS, and Apple Silicon macOS, no compiler required.
 
 Installation
 
 1. Create a virtual environment:
 
-python -m venv app_env
+python -m venv app_env          (macOS/Linux: python3 -m venv app_env)
 
 2. Activate it:
 
-.\app_env\Scripts\Activate.ps1
+Windows (PowerShell):   .\app_env\Scripts\Activate.ps1
+macOS / Linux:          source app_env/bin/activate
 
 3. Install dependencies:
 
@@ -61,20 +63,27 @@ Optional
 
 Default database
 
-If DATABASE_URL is not set, the backend uses:
+If DATABASE_URL is not set, the backend uses SQLite:
 
-postgresql+psycopg2://postgres:mayo_project%40123@localhost:5432/mayo_app
+sqlite:///./mayo_app.db
 
-Example PowerShell Setup
+To use Postgres instead, set DATABASE_URL to a Postgres connection string, e.g.:
 
+postgresql+psycopg2://username:password@localhost:5432/db_name
+
+Example Setup
+
+Windows (PowerShell):
 $env:ADMIN_EMAIL="admin@example.com"
 $env:ADMIN_PASSWORD="AdminPass123!"
 $env:ADMIN_NAME="System Admin"
 $env:SECRET_KEY="change-this-secret-key"
 
-If you want to use a different database:
-
-$env:DATABASE_URL="postgresql+psycopg2://username:password@localhost:5432/db_name"
+macOS / Linux:
+export ADMIN_EMAIL="admin@example.com"
+export ADMIN_PASSWORD="AdminPass123!"
+export ADMIN_NAME="System Admin"
+export SECRET_KEY="change-this-secret-key"
 
 How To Run
 
