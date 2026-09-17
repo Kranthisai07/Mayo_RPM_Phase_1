@@ -13,6 +13,7 @@ backend/data/
 
 # Personal agent-skills installs (npx skills add), not project-specific
 .agents/
+skills-lock.json
 
 # Node (frontend also has its own nested .gitignore; kept here too for
 # anyone running commands from the repo root)
