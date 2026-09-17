@@ -65,6 +65,8 @@ And it has two concrete engineering defects:
 1. **Retrains from scratch on every single API call.** `score_patient_db_weight_history()` calls `create_weight_model()`, which re-reads the CSV and re-fits `IsolationForest` on every hit to `/vitals/weight-ai/{patient_id}`. No caching or persisted model artifact. This will not scale past a handful of concurrent nurse requests.
 2. **Its dependencies are not installed in the documented environment.** See §6 — this route currently throws `ModuleNotFoundError` if you follow the backend README exactly.
 
+> **Scope decision (2026-09-15): weight-only, by choice, not by omission.** Confirmed SpO2 cannot be added to this model with the data currently available: `backend/data/RPM_combined_100_patients.csv` — the actual training source — has no SpO2 column at all (`Subject,Age,Gender,Date,Weight,Source`), and while the live `Vitals` table does capture `spo2_value` on every real submission, it doesn't yet hold enough longitudinal history to train against. The current anomaly-detection model operates on weight data only; SpO2 integration is identified as future work pending accumulation of sufficient longitudinal SpO2 data through clinical use. State this explicitly in the paper as a scoped limitation, not an oversight.
+
 ---
 
 ## 4. Reviewer Gap Status (Phase 0.5 checklist)
@@ -100,13 +102,13 @@ And it has two concrete engineering defects:
 
 **Security / data handling:**
 - `config.py` default `DATABASE_URL` embeds a plaintext password (`mayo_project%40123`) as a fallback, and `JWT_SECRET_KEY` defaults to the literal string `"change-this-secret-key"`. Neither is a problem if env vars are always set in real deployments, but both are landmines if anyone runs this without setting them — worth a startup check that refuses to boot with the JWT default in a non-debug mode.
-- **Patient can acknowledge/resolve their own critical alerts** (§4, item 4) — flagging per your standing instruction to flag anything touching patient health data handling before it's acted on.
+- ~~**Patient can acknowledge/resolve their own critical alerts**~~ — **Fixed.** `_get_manageable_alert()` no longer has a patient branch; patients now get 403 on both endpoints regardless of ownership, same as admin. Covered by `backend/tests/test_alert_authorization.py` (RED/GREEN, first test in the repo).
 - No rate limiting on `/auth/login` — brute-force is unmitigated, minor but worth a line in the paper's limitations if you discuss security posture.
 - No `.env` files are committed (good), but there's also no `.env.example`, so a new contributor has to reverse-engineer required variables from two READMEs.
 
 **Deployment blockers:**
-- `backend/requirements.txt` and `requirements-mac.txt` are both **UTF-16 encoded**, not UTF-8 — almost certainly produced by `pip freeze > requirements.txt` in Windows PowerShell without `-Encoding utf8`. This is likely to break `pip install -r requirements.txt` in a fresh environment or Docker build depending on pip/OS, and should be re-saved as UTF-8 regardless.
-- `requirements.txt` does not list `pandas`, `numpy`, or `scikit-learn` — the AI weight-anomaly endpoint (`/vitals/weight-ai/{patient_id}`) will throw `ModuleNotFoundError` on a clean install that follows the documented setup. This needs fixing before any deployment or demo.
+- ~~`backend/requirements.txt` and `requirements-mac.txt` are both **UTF-16 encoded**~~ — **Fixed.** Re-saved as UTF-8, `requirements-mac.txt` removed (it was a byte-identical duplicate, not actually macOS-specific). Verified against PyPI that every pinned package, including the AI dependencies below, publishes wheels for Windows, Intel macOS, and Apple Silicon macOS.
+- ~~`requirements.txt` does not list `pandas`, `numpy`, or `scikit-learn`~~ — **Fixed.** All three (plus `scipy`) are now pinned in `requirements.txt`.
 - No CI, no tests of any kind. For a CCWC Work-in-Progress paper this is acceptable to disclose as a limitation, but any "evaluation" claim in the paper needs to rest on something more than "it ran during development."
 - Nothing in the repo addresses app-store requirements (privacy policy hooks, permission manifests, data-handling disclosures) — expected, since mobile packaging is explicitly Phase 2 in your own roadmap, not blocking the paper.
 
@@ -118,10 +120,10 @@ Ranked by what actually changes the paper's story, not by difficulty:
 
 1. **Wire the existing AI signal into the alert pipeline.** Today it's a read-only nurse-dashboard widget; it needs to produce `Alert` rows (or a new `ai_flag` alongside rule-based alerts) so "AI-driven alerts" is literally true, not just "AI-informed dashboard."
 2. **Fix the retrain-per-request architecture** — persist the fitted model/scaler, retrain on a schedule or on-demand, not on every GET.
-3. **Add SpO2 to the AI scope**, or explicitly scope the paper to "weight-focused AI, SpO2 remains rule-based" (defensible for a 6-page WIP paper, but must be stated, not implied).
-4. **Close the escalation gap** (reviewer item #1): at minimum, add an `escalated` alert state and a timeout-based nurse → admin (or a second nurse) escalation when an alert sits `active` too long. This single change addresses reviewer items #1 and #2 together and is likely your highest-leverage engineering item for both the clinic and the paper.
-5. **Decide the patient-self-resolve question explicitly** — either restrict it server-side or document it as an intentional design choice with rationale. This needs your sign-off given the patient-safety angle.
-6. **Fix the environment/requirements issues in §6** before doing any live demo for the paper.
+3. ~~**Add SpO2 to the AI scope**~~ — **Decided (2026-09-15): weight-only, Option A.** Confirmed not viable to extend right now: the training CSV has no SpO2 column, and the live `Vitals` table doesn't yet hold enough longitudinal SpO2 history. Documented as a stated limitation, future work pending clinical-use data accumulation — see §3.
+4. **Close the escalation gap** (reviewer item #1): at minimum, add an `escalated` alert state and a timeout-based nurse → admin (or a second nurse) escalation when an alert sits `active` too long. This single change addresses reviewer items #1 and #2 together and is likely your highest-leverage engineering item for both the clinic and the paper. **In progress.**
+5. ~~**Decide the patient-self-resolve question explicitly**~~ — **Fixed.** Server-side restriction, not just a design note. See §6.
+6. **Fix the environment/requirements issues in §6** before doing any live demo for the paper. **Fixed** — see §6.
 7. Everything else in §5 is cleanup, not scope — worth doing but shouldn't consume roadmap time before the above.
 
 ---
@@ -153,11 +155,13 @@ Ranked by what actually changes the paper's story, not by difficulty:
 | Nurse dashboard + UI | ✅ Working (more complete than the rejection implies) |
 | Admin panel + UI | ⚠️ Working except alert visibility/action |
 | Rule-based alerts | ✅ Working |
-| AI weight anomaly detection | ⚠️ Exists, works, but disconnected from alerts + retrains per-request + undeclared deps |
-| Escalation pathway | ❌ Missing |
+| AI weight anomaly detection | ⚠️ Exists, works, deps fixed, but still disconnected from alerts + retrains per-request |
+| AI scope (SpO2) | ✅ Decided — weight-only, documented as a stated limitation |
+| Patient self-resolve authorization | ✅ Fixed |
+| Escalation pathway | ❌ Missing — in progress |
 | Nurse-unavailable edge case | ❌ Missing |
 | Admin role separation | ❌ Missing |
 | Device integration | ❌ Missing |
 | Alert scope beyond weight/SpO2 | ❌ Missing |
-| Tests / CI | ❌ Missing entirely |
-| Deployment readiness | ❌ Blocked by requirements.txt encoding + missing AI deps |
+| Tests / CI | ⚠️ One test exists (alert authorization); no runner/CI setup yet |
+| Deployment readiness | ✅ requirements.txt + AI deps fixed; CORS wildcard+credentials still open |
