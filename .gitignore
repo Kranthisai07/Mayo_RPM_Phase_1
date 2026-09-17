@@ -11,6 +11,9 @@ backend/data/
 # Claude Code local session config (machine-specific, not shared)
 .claude/
 
+# Personal agent-skills installs (npx skills add), not project-specific
+.agents/
+
 # Node (frontend also has its own nested .gitignore; kept here too for
 # anyone running commands from the repo root)
 node_modules/
