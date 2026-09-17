@@ -73,7 +73,7 @@ And it has two concrete engineering defects:
 
 | # | Reviewer concern | Status | Evidence |
 |---|---|---|---|
-| 1 | Escalation pathway after nurse acknowledges | **Not addressed** | `Alert.status` only cycles `active → acknowledged → resolved`. No `escalated` state, no physician role, no timeout/re-notify logic. An acknowledged critical alert has no further path if the nurse doesn't act. |
+| 1 | Escalation pathway after nurse acknowledges | **Partially addressed** | The assigned nurse can now flag an alert as escalated (`is_escalated`/`escalated_at` on `Alert`, `PUT /alerts/{id}/escalate`, verified at the API layer — 403 for anyone but the assigned nurse; tested in `backend/tests/test_alert_escalation.py`, live-verified end-to-end 2026-09-17). Reviewed and confirmed working in the nurse UI (alerts list + patient-detail screen). Still open: nothing *consumes* the flag yet — no admin capability change, no timeout/re-notify logic, no physician role (none exists in this codebase). Deciding who acts on an escalated alert is a deliberately separate decision, not yet made. |
 | 2 | Nurse availability edge case (stale/unexpected unavailability) | **Not addressed** | `User.is_available` is a bare boolean with no timestamp — no way to detect a nurse who went unavailable without updating status (app crash, phone died). Unassigned patients (no nurse ever available) generate alerts that are invisible to *every* nurse (`get_alerts_for_nurse` joins on `PatientAssignment`) and admin cannot act on alerts either (see #3 above) — so an alert can exist with literally no one able to act on it. |
 | 3 | Clinical admin vs IT admin separation | **Not addressed** | Single `role="admin"` string; one admin scope sees and can do everything (user management, all patient data, dashboard). No sub-role or scoped permission model. |
 | 4 | PII/PHI access control + logging | **Partially addressed** | `AuditLog` exists and is written on most sensitive actions (nurse-views-patient, alert ack/resolve, admin CRUD, vitals submission). Per-nurse access is correctly scoped to assigned patients (`is_patient_assigned_to_nurse` check, 403 otherwise). Gap: **a patient can acknowledge and resolve their own alerts**, including a `critical` SpO2 alert (`_get_manageable_alert` allows `actor_role == "patient"` when `alert.patient_id == actor_user_id`), which lets a patient silently clear a safety signal out of the nurse's active-alert view with no second check. This is worth flagging to the clinic explicitly — it reads as unintentional rather than a deliberate design choice. |
@@ -121,7 +121,7 @@ Ranked by what actually changes the paper's story, not by difficulty:
 1. **Wire the existing AI signal into the alert pipeline.** Today it's a read-only nurse-dashboard widget; it needs to produce `Alert` rows (or a new `ai_flag` alongside rule-based alerts) so "AI-driven alerts" is literally true, not just "AI-informed dashboard."
 2. **Fix the retrain-per-request architecture** — persist the fitted model/scaler, retrain on a schedule or on-demand, not on every GET.
 3. ~~**Add SpO2 to the AI scope**~~ — **Decided (2026-09-15): weight-only, Option A.** Confirmed not viable to extend right now: the training CSV has no SpO2 column, and the live `Vitals` table doesn't yet hold enough longitudinal SpO2 history. Documented as a stated limitation, future work pending clinical-use data accumulation — see §3.
-4. **Close the escalation gap** (reviewer item #1): at minimum, add an `escalated` alert state and a timeout-based nurse → admin (or a second nurse) escalation when an alert sits `active` too long. This single change addresses reviewer items #1 and #2 together and is likely your highest-leverage engineering item for both the clinic and the paper. **In progress.**
+4. **Close the escalation gap** (reviewer item #1) — **Partially done.** Manual nurse-triggered escalation flag shipped and reviewed working (see §4, item 1). Still open, and higher-leverage than the flag itself: nothing consumes `is_escalated` yet (no admin capability, no timeout-based auto-escalation) — that's the part that actually addresses reviewer item #2 (nurse-unavailable edge case) too, and needs its own explicit design decision before implementing.
 5. ~~**Decide the patient-self-resolve question explicitly**~~ — **Fixed.** Server-side restriction, not just a design note. See §6.
 6. **Fix the environment/requirements issues in §6** before doing any live demo for the paper. **Fixed** — see §6.
 7. Everything else in §5 is cleanup, not scope — worth doing but shouldn't consume roadmap time before the above.
@@ -158,7 +158,7 @@ Ranked by what actually changes the paper's story, not by difficulty:
 | AI weight anomaly detection | ⚠️ Exists, works, deps fixed, but still disconnected from alerts + retrains per-request |
 | AI scope (SpO2) | ✅ Decided — weight-only, documented as a stated limitation |
 | Patient self-resolve authorization | ✅ Fixed |
-| Escalation pathway | ❌ Missing — in progress |
+| Escalation pathway | ⚠️ Nurse can flag as escalated (reviewed, working) — no consumer yet |
 | Nurse-unavailable edge case | ❌ Missing |
 | Admin role separation | ❌ Missing |
 | Device integration | ❌ Missing |
