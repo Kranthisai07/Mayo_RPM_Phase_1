@@ -62,7 +62,7 @@ Specifically, this AI component does **not**:
 - Get evaluated against ground truth in any documented way (no held-out set, no precision/recall reported anywhere in the repo).
 
 And it has two concrete engineering defects:
-1. **Retrains from scratch on every single API call.** `score_patient_db_weight_history()` calls `create_weight_model()`, which re-reads the CSV and re-fits `IsolationForest` on every hit to `/vitals/weight-ai/{patient_id}`. No caching or persisted model artifact. This will not scale past a handful of concurrent nurse requests.
+1. ~~**Retrains from scratch on every single API call.**~~ — **Fixed (2026-09-17).** `create_weight_model()` now checks an in-memory cache, then a disk cache (`backend/data/.weight_model_cache.joblib`, gitignored), keyed to a fingerprint of `RPM_combined_100_patients.csv`'s mtime+size. Only retrains if that fingerprint changes. Verified live against the real dataset: cold train ~1.8s, cached in-process ~0.06s, cached-on-disk-after-restart ~0.2s. Tested in `backend/tests/test_weight_model_caching.py` (synthetic CSV fixture, RED/GREEN, 3 tests: repeat-calls-train-once, disk-cache-survives-memory-clear, changed-CSV-forces-retrain). Deliberately did not add a scheduled/admin-triggered retrain mechanism — the model only ever trains against this static file, which doesn't change while the server runs, so there's nothing for a scheduled job to react to yet. That becomes relevant only if the training source moves to the live `Vitals` table, which is a separate, larger decision not yet made.
 2. **Its dependencies are not installed in the documented environment.** See §6 — this route currently throws `ModuleNotFoundError` if you follow the backend README exactly.
 
 > **Scope decision (2026-09-15): weight-only, by choice, not by omission.** Confirmed SpO2 cannot be added to this model with the data currently available: `backend/data/RPM_combined_100_patients.csv` — the actual training source — has no SpO2 column at all (`Subject,Age,Gender,Date,Weight,Source`), and while the live `Vitals` table does capture `spo2_value` on every real submission, it doesn't yet hold enough longitudinal history to train against. The current anomaly-detection model operates on weight data only; SpO2 integration is identified as future work pending accumulation of sufficient longitudinal SpO2 data through clinical use. State this explicitly in the paper as a scoped limitation, not an oversight.
@@ -119,7 +119,7 @@ And it has two concrete engineering defects:
 Ranked by what actually changes the paper's story, not by difficulty:
 
 1. **Wire the existing AI signal into the alert pipeline.** Today it's a read-only nurse-dashboard widget; it needs to produce `Alert` rows (or a new `ai_flag` alongside rule-based alerts) so "AI-driven alerts" is literally true, not just "AI-informed dashboard."
-2. **Fix the retrain-per-request architecture** — persist the fitted model/scaler, retrain on a schedule or on-demand, not on every GET.
+2. ~~**Fix the retrain-per-request architecture**~~ — **Fixed.** In-memory + disk-persisted cache, invalidated only when the source CSV actually changes. See §3.
 3. ~~**Add SpO2 to the AI scope**~~ — **Decided (2026-09-15): weight-only, Option A.** Confirmed not viable to extend right now: the training CSV has no SpO2 column, and the live `Vitals` table doesn't yet hold enough longitudinal SpO2 history. Documented as a stated limitation, future work pending clinical-use data accumulation — see §3.
 4. **Close the escalation gap** (reviewer item #1) — **Partially done.** Manual nurse-triggered escalation flag shipped and reviewed working (see §4, item 1). Still open, and higher-leverage than the flag itself: nothing consumes `is_escalated` yet (no admin capability, no timeout-based auto-escalation) — that's the part that actually addresses reviewer item #2 (nurse-unavailable edge case) too, and needs its own explicit design decision before implementing.
 5. ~~**Decide the patient-self-resolve question explicitly**~~ — **Fixed.** Server-side restriction, not just a design note. See §6.
@@ -155,7 +155,7 @@ Ranked by what actually changes the paper's story, not by difficulty:
 | Nurse dashboard + UI | ✅ Working (more complete than the rejection implies) |
 | Admin panel + UI | ⚠️ Working except alert visibility/action |
 | Rule-based alerts | ✅ Working |
-| AI weight anomaly detection | ⚠️ Exists, works, deps fixed, but still disconnected from alerts + retrains per-request |
+| AI weight anomaly detection | ⚠️ Exists, works, deps fixed, caching fixed — still disconnected from the alert pipeline |
 | AI scope (SpO2) | ✅ Decided — weight-only, documented as a stated limitation |
 | Patient self-resolve authorization | ✅ Fixed |
 | Escalation pathway | ⚠️ Nurse can flag as escalated (reviewed, working) — no consumer yet |

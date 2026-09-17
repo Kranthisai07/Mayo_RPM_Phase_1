@@ -1,5 +1,7 @@
+from functools import lru_cache
 from pathlib import Path
 
+import joblib
 import pandas as pd
 from sqlalchemy.orm import Session
 from sklearn.ensemble import IsolationForest
@@ -12,6 +14,19 @@ DATA_FILE = (
     Path(__file__).resolve().parents[2]
     / "data"
     / "RPM_combined_100_patients.csv"
+)
+
+# Trained-model cache. The model only ever trains against DATA_FILE, which
+# is a static bundled CSV that never changes while the server is running -
+# so "retrain" only needs to mean "DATA_FILE's content changed since we
+# last trained", not a scheduled or manually-triggered job. See
+# PROJECT_AUDIT.md for why a scheduled/admin-triggered retrain mechanism
+# is deliberately not built: there is currently no live-changing training
+# data source for it to react to.
+CACHE_FILE = (
+    Path(__file__).resolve().parents[2]
+    / "data"
+    / ".weight_model_cache.joblib"
 )
 
 
@@ -491,10 +506,14 @@ def add_weight_features_to_history(df):
     return df
 
 
-def create_weight_model():
+def _train_weight_model():
     """
     Train the Isolation Forest model from real-patient
     observations and return the reusable model components.
+
+    Do not call this directly - use create_weight_model(), which
+    caches the result in memory and on disk so this only actually
+    runs when DATA_FILE's content has changed.
     """
 
     training_df = build_weight_ai_features()
@@ -557,6 +576,43 @@ def create_weight_model():
         "high_threshold": high_threshold,
         "watch_threshold": watch_threshold,
     }
+
+
+def _csv_fingerprint():
+    stat = DATA_FILE.stat()
+    return (stat.st_mtime_ns, stat.st_size)
+
+
+@lru_cache(maxsize=1)
+def _cached_weight_model(fingerprint):
+    if CACHE_FILE.exists():
+        try:
+            cached = joblib.load(CACHE_FILE)
+            if cached.get("fingerprint") == fingerprint:
+                return cached["bundle"]
+        except Exception:
+            pass  # corrupt or unreadable cache file - fall through and retrain
+
+    bundle = _train_weight_model()
+
+    try:
+        CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump({"fingerprint": fingerprint, "bundle": bundle}, CACHE_FILE)
+    except OSError:
+        pass  # disk cache is an optimization, not required for correctness
+
+    return bundle
+
+
+def create_weight_model():
+    """
+    Return the trained model bundle, training only if DATA_FILE's
+    content has changed since the last training (in this process, or
+    on disk from a previous process). See the CACHE_FILE comment near
+    the top of this file for why no scheduled/manual retrain trigger
+    exists - there is nothing for one to react to yet.
+    """
+    return _cached_weight_model(_csv_fingerprint())
 
 
 def assign_ai_monitoring_status(

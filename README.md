@@ -54,6 +54,7 @@ cd Mayo_RPM_Phase_1
 - **Node.js 20.19.4+** (Node 22 works), **npm 10+** (frontend). If Node is too old, Expo/Metro may fail with `TypeError: _os.default.availableParallelism is not a function`.
 - **No database server required for local dev.** The backend defaults to a local SQLite file (`backend/mayo_app.db`, gitignored). PostgreSQL is only needed if you explicitly set `DATABASE_URL` to a Postgres connection string — see below.
 - The AI weight-anomaly service needs `pandas`, `numpy`, and `scikit-learn` (declared in `backend/requirements.txt`). All three ship prebuilt wheels for Windows, Intel macOS, and Apple Silicon macOS — a plain `pip install -r requirements.txt` installs them with no compiler needed on either platform.
+- **AI model training/caching**: the weight-anomaly model trains once per distinct state of `backend/data/RPM_combined_100_patients.csv`, not on every request. It's cached in memory for the life of the server process, and on disk at `backend/data/.weight_model_cache.joblib` (gitignored) so restarts don't retrain either, unless the CSV's content actually changed since the cache was written. To force a retrain, just delete that cache file.
 
 ## Start The Backend
 
