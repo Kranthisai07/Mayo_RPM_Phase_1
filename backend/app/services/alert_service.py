@@ -89,10 +89,7 @@ def _get_manageable_alert(db: Session, actor_user_id: int, actor_role: str, aler
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    if actor_role == "patient":
-        if alert.patient_id != actor_user_id:
-            raise HTTPException(status_code=403, detail="Access denied")
-    elif actor_role == "nurse":
+    if actor_role == "nurse":
         if not _can_nurse_manage_alert(db, actor_user_id, alert.patient_id):
             raise HTTPException(status_code=403, detail="Access denied")
     else:
