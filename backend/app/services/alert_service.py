@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -120,3 +122,16 @@ def resolve_alert_service(db: Session, actor_user_id: int, actor_role: str, aler
     db.commit()
 
     return {"message": "Alert resolved successfully"}
+
+
+def escalate_alert_service(db: Session, actor_user_id: int, actor_role: str, alert_id: int):
+    alert = _get_manageable_alert(db, actor_user_id, actor_role, alert_id)
+
+    if alert.is_escalated:
+        return {"message": "Alert already escalated"}
+
+    alert.is_escalated = True
+    alert.escalated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {"message": "Alert escalated successfully"}

@@ -10,6 +10,7 @@ import {
 import {
   acknowledgeAlert,
   resolveAlert,
+  escalateAlert,
 } from "../../../src/features/alerts/alertService";
 
 import Card from "../../../src/components/card";
@@ -58,15 +59,17 @@ export default function PatientDetail() {
 
   const handleAlertAction = async (
     alertId: number,
-    action: "acknowledge" | "resolve"
+    action: "acknowledge" | "resolve" | "escalate"
   ) => {
     setLoading(true);
 
     try {
       if (action === "acknowledge") {
         await acknowledgeAlert(alertId);
-      } else {
+      } else if (action === "resolve") {
         await resolveAlert(alertId);
+      } else {
+        await escalateAlert(alertId);
       }
 
       await load();
@@ -179,6 +182,13 @@ export default function PatientDetail() {
                         }
                       />
 
+                      {alert.is_escalated && (
+                        <StatusBadge
+                          label="Escalated"
+                          tone="danger"
+                        />
+                      )}
+
                     </View>
 
                     <Text
@@ -213,6 +223,27 @@ export default function PatientDetail() {
                           styles.alertButton
                         }
                       />
+
+                      {!alert.is_escalated && (
+                        <PrimaryButton
+                          title="Escalate"
+
+                          variant="secondary"
+
+                          loading={loading}
+
+                          onPress={() =>
+                            handleAlertAction(
+                              alert.id,
+                              "escalate"
+                            )
+                          }
+
+                          style={
+                            styles.alertButton
+                          }
+                        />
+                      )}
 
                       <PrimaryButton
                         title="Resolve"

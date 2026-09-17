@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -21,6 +21,10 @@ class Alert(Base):
     message = Column(String, nullable=False)
 
     status = Column(String, default="active")
+
+    is_escalated = Column(Boolean, nullable=False, default=False)
+
+    escalated_at = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

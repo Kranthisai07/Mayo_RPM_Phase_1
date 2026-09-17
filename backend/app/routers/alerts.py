@@ -10,7 +10,8 @@ from app.services.alert_service import (
     get_active_alerts,
     get_alerts_by_user,
     acknowledge_alert_service,
-    resolve_alert_service
+    resolve_alert_service,
+    escalate_alert_service
 )
 from app.services.audit_service import log_audit
 
@@ -87,5 +88,29 @@ def resolve_alert(
         target_type="alert",
         target_id=alert_id,
         details=f"{current_user['role'].capitalize()} resolved alert",
+    )
+    return result
+
+
+
+@router.put("/{alert_id}/escalate")
+def escalate_alert(
+    alert_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    result = escalate_alert_service(
+        db,
+        current_user["user_id"],
+        current_user["role"],
+        alert_id,
+    )
+    log_audit(
+        db,
+        action="ALERT_ESCALATED",
+        actor_user_id=current_user["user_id"],
+        target_type="alert",
+        target_id=alert_id,
+        details=f"{current_user['role'].capitalize()} escalated alert",
     )
     return result

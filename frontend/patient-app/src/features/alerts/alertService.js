@@ -24,3 +24,8 @@ export const resolveAlert = async (alertId) => {
   const response = await API.put(`/alerts/${alertId}/resolve`);
   return response.data;
 };
+
+export const escalateAlert = async (alertId) => {
+  const response = await API.put(`/alerts/${alertId}/escalate`);
+  return response.data;
+};

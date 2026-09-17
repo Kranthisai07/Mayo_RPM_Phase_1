@@ -11,6 +11,8 @@ class AlertResponse(BaseModel):
     severity: str
     message: str
     status: str
+    is_escalated: bool
+    escalated_at: Optional[datetime]
     created_at: Optional[datetime]
 
     class Config:

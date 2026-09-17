@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, FlatList, RefreshControl, Platform } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getNurseAlerts, acknowledgeAlert, resolveAlert } from "../../src/features/alerts/alertService";
+import { getNurseAlerts, acknowledgeAlert, resolveAlert, escalateAlert } from "../../src/features/alerts/alertService";
 import { getAssignedPatients } from "../../src/features/nurse/nurseService";
 import Card from "../../src/components/card";
 import PrimaryButton from "../../src/components/PrimaryButton";
@@ -54,13 +54,15 @@ export default function NurseAlerts() {
     setRefreshing(false);
   };
 
-  const handleAction = async (alertId: number, action: "acknowledge" | "resolve") => {
+  const handleAction = async (alertId: number, action: "acknowledge" | "resolve" | "escalate") => {
     setActingId(alertId);
     try {
       if (action === "acknowledge") {
         await acknowledgeAlert(alertId);
-      } else {
+      } else if (action === "resolve") {
         await resolveAlert(alertId);
+      } else {
+        await escalateAlert(alertId);
       }
       await load();
     } catch (err: any) {
@@ -102,6 +104,7 @@ export default function NurseAlerts() {
           <View style={styles.badges}>
             <StatusBadge label={item.severity} tone={severityTone(item.severity)} />
             <StatusBadge label={statusLabel(item.status)} tone={statusTone(item.status)} />
+            {item.is_escalated && <StatusBadge label="Escalated" tone="danger" />}
           </View>
           <Text style={styles.patientName}>
             {patientNameById.get(item.patient_id) ?? `Patient #${item.patient_id}`}
@@ -115,6 +118,15 @@ export default function NurseAlerts() {
                   variant="secondary"
                   loading={actingId === item.id}
                   onPress={() => handleAction(item.id, "acknowledge")}
+                  style={styles.actionButton}
+                />
+              )}
+              {!item.is_escalated && (
+                <PrimaryButton
+                  title="Escalate"
+                  variant="secondary"
+                  loading={actingId === item.id}
+                  onPress={() => handleAction(item.id, "escalate")}
                   style={styles.actionButton}
                 />
               )}
