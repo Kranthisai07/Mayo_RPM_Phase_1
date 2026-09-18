@@ -189,6 +189,13 @@ export default function PatientDetail() {
                         />
                       )}
 
+                      {alert.alert_type === "ai_weight_anomaly" && (
+                        <StatusBadge
+                          label="AI"
+                          tone="info"
+                        />
+                      )}
+
                     </View>
 
                     <Text

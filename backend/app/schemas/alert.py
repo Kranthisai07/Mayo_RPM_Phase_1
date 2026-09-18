@@ -13,6 +13,7 @@ class AlertResponse(BaseModel):
     status: str
     is_escalated: bool
     escalated_at: Optional[datetime]
+    ai_score: Optional[float]
     created_at: Optional[datetime]
 
     class Config:

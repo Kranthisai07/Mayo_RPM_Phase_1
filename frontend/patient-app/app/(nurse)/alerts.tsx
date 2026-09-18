@@ -105,6 +105,7 @@ export default function NurseAlerts() {
             <StatusBadge label={item.severity} tone={severityTone(item.severity)} />
             <StatusBadge label={statusLabel(item.status)} tone={statusTone(item.status)} />
             {item.is_escalated && <StatusBadge label="Escalated" tone="danger" />}
+            {item.alert_type === "ai_weight_anomaly" && <StatusBadge label="AI" tone="info" />}
           </View>
           <Text style={styles.patientName}>
             {patientNameById.get(item.patient_id) ?? `Patient #${item.patient_id}`}

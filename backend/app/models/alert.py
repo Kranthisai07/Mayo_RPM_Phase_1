@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Boolean, Column, Float, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -25,6 +25,12 @@ class Alert(Base):
     is_escalated = Column(Boolean, nullable=False, default=False)
 
     escalated_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Raw IsolationForest decision_function score. Only populated for
+    # alert_type == "ai_weight_anomaly"; null for rule-based alerts.
+    # Kept for later quantitative reporting (score distribution,
+    # precision/recall) - not used by any current app logic.
+    ai_score = Column(Float, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
